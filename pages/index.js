@@ -9,7 +9,7 @@ function Home() {
     router.push(`/${roomId}`);
   };
   const joinRoom = () => {
-    if (roomId) router.push(roomId);
+    if (roomId) router.push(`/${roomId}`);
     else {
       alert("Please provide a room id");
     }
