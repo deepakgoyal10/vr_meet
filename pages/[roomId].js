@@ -1,19 +1,30 @@
 import Player from "@/components/Player";
+import Bottom from "@/components/Bottom";
 import { useSocket } from "@/context/socket";
 import useMediaStream from "@/hook/useMediaStream";
 import usePeer from "@/hook/usePeer";
 
 import usePlayer from "@/hook/usePlayer";
+import { cloneDeep } from "lodash";
+import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
-const room = () => {
+import CopySection from "@/components/copySection";
+
+const Room = () => {
   const socket = useSocket();
   const { peer, myId } = usePeer();
   const { stream } = useMediaStream();
-  const { players, setPlayers, playerHighlighted, nonHighlightedPlayers } =
-    usePlayer(myId);
-  useEffect(() => {
-    console.log("peer==>", peer);
-  }, [peer]);
+  const { roomId } = useRouter().query;
+  const {
+    players,
+    setPlayers,
+    playerHighlighted,
+    nonHighlightedPlayers,
+    toggleAudio,
+    toggleVideo,
+    leaveRoom,
+  } = usePlayer(myId, roomId, peer);
+  const [user, setUsers] = useState([]);
   useEffect(() => {
     if (!socket || !peer || !stream) {
       return console.log("peer", peer);
@@ -28,9 +39,13 @@ const room = () => {
           ...prev,
           [newUser]: {
             url: incomingStream,
-            muted: false,
+            muted: true,
             playing: true,
           },
+        }));
+        setUsers((prev) => ({
+          ...prev,
+          [newUser]: call,
         }));
       });
     };
@@ -39,7 +54,50 @@ const room = () => {
     return () => {
       socket?.off("user-connected", handleUserConnected);
     };
-  }, [peer, socket, stream]);
+  }, [peer, socket, stream, setPlayers]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const userHandleToggleAudio = (userId) => {
+      console.log("user with id" + userId + "toggle audio");
+      setPlayers((prev) => {
+        const copy = cloneDeep(prev);
+        copy[userId].muted = !copy[userId].muted;
+
+        console.log("audio toggled", copy[userId].muted);
+        return {
+          ...copy,
+        };
+      });
+    };
+    const userHandleToggleVideo = (userId) => {
+      console.log("user with id" + userId + "toggle video");
+      setPlayers((prev) => {
+        const copy = cloneDeep(prev);
+        copy[userId].playing = !copy[userId]?.playing;
+
+        console.log("audio toggled", copy[userId]?.playing);
+        return {
+          ...copy,
+        };
+      });
+    };
+    const handleUserLeave = (userId) => {
+      console.log("user with userId" + userId + "leaving the room");
+      user[userId]?.close();
+      const playerCopy = cloneDeep(players);
+      delete playerCopy[userId];
+      setPlayers(playerCopy);
+    };
+    socket.on("user-toggle-audio", userHandleToggleAudio);
+    socket.on("user-toggle-video", userHandleToggleVideo);
+    socket.on("user-leave", handleUserLeave);
+    return () => {
+      socket.off("user-toggle-audio", userHandleToggleAudio);
+      socket.off("user-toggle-video", userHandleToggleVideo);
+      socket.off("user-leave", handleUserLeave);
+    };
+  }, [socket, setPlayers, user, players]);
   useEffect(() => {
     if (!peer || !stream) {
       console.log("second useEffect if condition");
@@ -54,9 +112,13 @@ const room = () => {
           ...prev,
           [callerId]: {
             url: incomingStream,
-            muted: false,
+            muted: true,
             playing: true,
           },
+        }));
+        setUsers((prev) => ({
+          ...prev,
+          [callerId]: call,
         }));
       });
     });
@@ -68,7 +130,7 @@ const room = () => {
       ...prev,
       [myId]: {
         url: stream,
-        muted: false,
+        muted: true,
         playing: true,
       },
     }));
@@ -100,8 +162,16 @@ const room = () => {
           );
         })}
       </div>
+      <CopySection roomId={roomId} />
+      <Bottom
+        muted={playerHighlighted?.muted}
+        playing={playerHighlighted?.playing}
+        toggleAudio={toggleAudio}
+        toggleVideo={toggleVideo}
+        leaveRoom={leaveRoom}
+      />
     </>
   );
 };
 
-export default room;
+export default Room;
