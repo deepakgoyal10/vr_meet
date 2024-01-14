@@ -9,20 +9,47 @@ const usePeer = () => {
   const socket = useSocket();
   const roomId = useRouter().query.roomId;
 
+  // useEffect(() => {
+  //   if (isPeerSet.current || !roomId || !socket) return;
+  //   isPeerSet.current = true;
+  //   let myPeer;
+  //   (async function initPeer() {
+  //     myPeer = new (await import("peerjs")).default();
+  //     setPeer(myPeer);
+  //     myPeer.on("open", (id) => {
+  //       socket?.emit("join-room", roomId, id);
+  //       console.log("Your peer id is: " + id);
+  //       setMyId(id);
+  //     });
+  //   })();
+  // }, [roomId, socket]);
   useEffect(() => {
     if (isPeerSet.current || !roomId || !socket) return;
     isPeerSet.current = true;
-    let myPeer;
+
     (async function initPeer() {
-      myPeer = new (await import("peerjs")).default();
-      setPeer(myPeer);
+      const { default: Peer } = await import("peerjs");
+      const myPeer = new Peer({
+        host: "13.201.86.228",
+        secure: false,
+        port: 9000,
+      });
+      // const myPeer = new Peer();
+
       myPeer.on("open", (id) => {
         socket?.emit("join-room", roomId, id);
         console.log("Your peer id is: " + id);
         setMyId(id);
       });
+
+      setPeer(myPeer);
+
+      return () => {
+        myPeer.destroy(); // Cleanup when the component unmounts
+      };
     })();
   }, [roomId, socket]);
+
   return { peer, myId };
 };
 

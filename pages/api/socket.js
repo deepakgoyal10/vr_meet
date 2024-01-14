@@ -1,11 +1,17 @@
 import { Server } from "socket.io";
+import Cors from "cors";
+
+const cors = Cors({ origin: "https://vr-meet.vercel.app" });
+
 const socketHandler = (req, res) => {
   try {
     console.log("calledapi");
     if (res.socket.server.io) {
       console.log("socket already running");
     } else {
+      console.log("created new socket");
       const io = new Server(res.socket.server);
+      console.log("Socket created");
       res.socket.server.io = io;
       io.on("connection", (socket) => {
         console.log("server is connected");
