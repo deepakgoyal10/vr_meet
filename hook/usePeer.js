@@ -30,7 +30,7 @@ const usePeer = () => {
     (async function initPeer() {
       const { default: Peer } = await import("peerjs");
       const myPeer = new Peer({
-        host: "13.201.86.228",
+        host: "13.235.0.220",
         secure: false,
         port: 9000,
       });
